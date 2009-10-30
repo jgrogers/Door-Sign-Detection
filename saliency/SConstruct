@@ -1,0 +1,40 @@
+import distutils.sysconfig
+import os
+env = Environment(SWIGFLAGS=['-python','-c++'],
+		  CPPPATH=[distutils.sysconfig.get_python_inc()])
+env["ENV"]["PKG_CONFIG_PATH"] = os.environ.get("PKG_CONFIG_PATH")
+
+lib_files = Split("""
+		  src/saliency.cpp
+""")
+swig_files = Split("""
+	        """)
+env.ParseConfig('pkg-config --cflags --libs opencv')
+
+debug = ARGUMENTS.get('debug',0)
+if int (debug):
+   env.Append(CCFLAGS = '-g')
+else:
+   env.Append(CCFLAGS = '-O3')
+
+env.Append(CPPPATH = ['include'])
+
+env.Append(LIBS = ['cppunit','boost_program_options-mt'])
+
+env.Library('saliency', lib_files)
+
+
+cpp_files = Split("""src/main.cpp
+		      """)
+
+test_files = Split("""test/test.cpp
+		      """)
+ 
+		      
+#env = Environment();
+env.Append(LIBS = ['saliency'])
+env.Append(LIBPATH = ['.'])
+env.Program('bin/saliency', cpp_files)
+
+env.Program('bin/unittest', test_files);
+
