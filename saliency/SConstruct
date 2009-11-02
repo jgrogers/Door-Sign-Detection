@@ -7,6 +7,13 @@ env["ENV"]["PKG_CONFIG_PATH"] = os.environ.get("PKG_CONFIG_PATH")
 lib_files = Split("""
 		  src/saliency.cpp
 """)
+
+bloblib_files = Split("""
+		  ../blobs/BlobExtraction.cpp
+		  ../blobs/Blob.cpp
+		  ../blobs/BlobResult.cpp
+""")
+
 swig_files = Split("""
 	        """)
 env.ParseConfig('pkg-config --cflags --libs opencv')
@@ -17,12 +24,12 @@ if int (debug):
 else:
    env.Append(CCFLAGS = '-O3')
 
-env.Append(CPPPATH = ['include'])
+env.Append(CPPPATH = ['include','../blobs'])
 
 env.Append(LIBS = ['cppunit','boost_program_options-mt'])
 
 env.Library('saliency', lib_files)
-
+env.Library('blobs', bloblib_files)
 
 cpp_files = Split("""src/main.cpp
 		      """)
@@ -32,7 +39,7 @@ test_files = Split("""test/test.cpp
  
 		      
 #env = Environment();
-env.Append(LIBS = ['saliency'])
+env.Append(LIBS = ['saliency','blobs'])
 env.Append(LIBPATH = ['.'])
 env.Program('bin/saliency', cpp_files)
 

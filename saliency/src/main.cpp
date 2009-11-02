@@ -1,6 +1,8 @@
 #include <saliency.h>
 #include <boost/program_options.hpp>
 #include <iostream>
+#include <Blob.h>
+#include <BlobResult.h>
 
  int thresh = 120;
  int scale = 8;
@@ -46,9 +48,33 @@ int main(int argc, char** argv) {
 
     do {
       IplImage* img_out = ComputeSaliency(img_in, thresh, scale);
+      IplImage* displayedImage = cvCreateImage(cvGetSize(img_out), IPL_DEPTH_8U, 3);
       cvNamedWindow("output",1);
-      cvShowImage("output", img_out);
+
+      CBlobResult blobs;
+      int i;
+      CBlob *currentBlob;
+      // find non-white blobs in thresholded image
+      blobs = CBlobResult( img_out, NULL, 127, 255 );
+      // exclude the ones smaller than param2 value
+      blobs.Filter( blobs, B_EXCLUDE, CBlobGetArea(), B_LESS, 20 );
+      
+      // get mean gray color of biggest blob
+      
+      // display filtered blobs
+      cvMerge( img_out, img_out, img_out, NULL, displayedImage );
+      printf("Found %d blobs\n", 
+	     blobs.GetNumBlobs());
+      for (i = 2; i < blobs.GetNumBlobs(); i++ )
+	{
+	  currentBlob = blobs.GetBlob(i);
+	  currentBlob->FillBlob( displayedImage, CV_RGB(255,0,0));
+	}
+      if (blobs.GetNumBlobs()< 200) 
+	blobs.PrintBlobs("test.out");
+      cvShowImage("output", displayedImage);
       cvReleaseImage(&img_out);
+      cvReleaseImage(&displayedImage);
       key = cvWaitKey(30);
     }while (key != 'q');
     cvReleaseImage(&img_in);
