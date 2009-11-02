@@ -3,10 +3,8 @@
 #include <cv.h>
 
 IplImage* 
-ComputeSaliency(IplImage* image) {
+ComputeSaliency(IplImage* image, int thresh, int scale) {
 
-  unsigned int  thresh = 120;
-  unsigned int scale = 8;
   double saliency_scale = int(pow(2,scale));
   IplImage* bw_im1 = cvCreateImage(cvGetSize(image), IPL_DEPTH_8U,1);
   cvCvtColor(image, bw_im1, CV_BGR2GRAY);
@@ -36,6 +34,7 @@ ComputeSaliency(IplImage* image) {
   cvGetSubRect( dft_A, tmp, cvRect(0,0, bw_im->width, bw_im->height));
   cvCopy( complexInput, tmp, NULL );
   if(dft_A->width > bw_im->width){
+    cvReleaseMat(&tmp);
     tmp = cvCreateMat(dft_N - bw_im->width, bw_im->height, CV_8UC1);
     cvGetSubRect( dft_A, tmp,cvRect(bw_im->width,0, dft_N - bw_im->width, bw_im->height));
     cvZero( tmp );
@@ -67,6 +66,7 @@ ComputeSaliency(IplImage* image) {
 
   cvMerge(image_Re, image_Im, NULL, NULL, dft_A);
   cvDFT( dft_A, dft_A, CV_DXT_INVERSE, complexInput->height);
+  cvReleaseMat(&tmp);
   tmp = cvCreateMat(bw_im->width, bw_im->height, CV_8UC1);
   
   cvGetSubRect( dft_A, tmp,  cvRect(0,0, bw_im->width, bw_im->height));
@@ -82,6 +82,23 @@ ComputeSaliency(IplImage* image) {
   IplImage* tmp_img = cvCreateImage(cvGetSize(bw_im1),IPL_DEPTH_32F, 1);
   cvResize(realInput,tmp_img);
   cvScale(tmp_img, bw_im1, 255,0);
+  cvReleaseImage(&realInput);
+  cvReleaseImage(&imaginaryInput);
+  cvReleaseImage(&complexInput);
+  cvReleaseMat(&dft_A);
+  cvReleaseImage(&bw_im);
+
+  cvReleaseImage(&image_Re);
+  cvReleaseImage(&image_Im);
+  cvReleaseMat(&tmp);
+
+  cvReleaseImage(&image_Mag);
+  cvReleaseImage(&image_Phase);
+    
+
+  cvReleaseImage(&log_mag);
+  cvReleaseImage(&image_Mag_Filt);
+
   return bw_im1;
 }
 

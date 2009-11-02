@@ -3,4 +3,4 @@
 
 
 IplImage* 
-ComputeSaliency(IplImage* image);
+ComputeSaliency(IplImage* image, int thresh, int scale);
