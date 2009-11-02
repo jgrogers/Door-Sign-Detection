@@ -82,6 +82,8 @@ ComputeSaliency(IplImage* image, int thresh, int scale) {
   IplImage* tmp_img = cvCreateImage(cvGetSize(bw_im1),IPL_DEPTH_32F, 1);
   cvResize(realInput,tmp_img);
   cvScale(tmp_img, bw_im1, 255,0);
+
+  cvReleaseImage(&tmp_img);
   cvReleaseImage(&realInput);
   cvReleaseImage(&imaginaryInput);
   cvReleaseImage(&complexInput);

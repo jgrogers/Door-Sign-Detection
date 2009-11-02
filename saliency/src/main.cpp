@@ -51,7 +51,8 @@ int main(int argc, char** argv) {
       cvReleaseImage(&img_out);
       key = cvWaitKey(30);
     }while (key != 'q');
+    cvReleaseImage(&img_in);
   }
-
+  
   return -1;
 }
