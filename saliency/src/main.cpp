@@ -7,7 +7,7 @@
 #include <cv.h>
 
  int thresh = 350;
- int scale = 5;
+ int scale = 6;
 
 void on_trackbar( int position) {
   thresh = position;
@@ -112,7 +112,9 @@ int main(int argc, char** argv) {
     ("help", "produce help message")
     ("img", po::value<std::string>(), "Load this file for detect saliency")
     ("saliency", "run saliency test")
+    ("saliency_blobs", "run saliency test")
     ("edge", "run edge test")
+    ("conv_rect", "run the convolution rectangle test")
     ;
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc),vm);
@@ -134,7 +136,21 @@ int main(int argc, char** argv) {
 
     do {
       IplImage* img_in = cvLoadImage(vm["img"].as<std::string>().c_str());
+      IplImage* img_tmp = cvCreateImage(cvSize(1024,768), IPL_DEPTH_8U, 3);
+      cvResize(img_in, img_tmp);
+      cvReleaseImage(&img_in);
+      img_in = img_tmp;
       cvSmooth(img_in,img_in,3);
+      if (vm.count ("conv_rect")) {
+	IplImage* img_tmp = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U,1);
+	IplImage* img_out;// = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U, 1);
+	cvCvtColor(img_in, img_tmp, CV_BGR2GRAY);
+	//img_out = ConvRect(img_tmp, thresh, scale);
+	cvShowImageSmall("Input", img_in);
+	cvShowImageSmall("output",img_out);
+	cvReleaseImage(&img_tmp);
+	cvReleaseImage(&img_out);
+      }
       if (vm.count ("edge")) {
 	IplImage* img_tmp = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U,1);
 	IplImage* img_out = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U, 1);
@@ -143,10 +159,24 @@ int main(int argc, char** argv) {
 	
 	cvShowImageSmall("Input", img_in);
 	cvShowImageSmall("output", img_out);
+	cvReleaseImage(&img_tmp);
 	cvReleaseImage(&img_out);
       }
-      if (vm.count ("saliency")) {
-	IplImage* img_out = ComputeSaliency(img_in, thresh, scale);
+      if (vm.count("saliency")) {
+	IplImage* tmp_img = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U, 1);
+	cvCvtColor(img_in, tmp_img, CV_BGR2GRAY);
+	IplImage* img_out = ComputeSaliency(tmp_img, thresh, scale);
+	cvShowImageSmall("Input", tmp_img);
+	cvReleaseImage(&tmp_img);
+
+	cvShowImageSmall("output",img_out);
+	cvReleaseImage(&img_out);
+      }
+      if (vm.count ("saliency_blobs")) {
+	IplImage* tmp_img = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U, 1);
+	cvCvtColor(img_in, tmp_img, CV_BGR2GRAY);
+	IplImage* img_out = ComputeSaliency(tmp_img, thresh, scale);
+	cvReleaseImage(&tmp_img);
 	IplImage* displayedImage = cvCreateImage(cvGetSize(img_out), IPL_DEPTH_8U, 3);
 
 	CBlobResult blobs;
@@ -167,7 +197,7 @@ int main(int argc, char** argv) {
 	for (i = 2; i < blobs.GetNumBlobs(); i++ )
 	  {
 	    currentBlob = blobs.GetBlob(i);
-	    currentBlob->FillBlob( displayedImage, CV_RGB(255-i*255/blobs.GetNumBlobs(),i*255/blobs.GetNumBlobs(),0));
+	    //currentBlob->FillBlob( displayedImage, CV_RGB(255-i*255/blobs.GetNumBlobs(),i*255/blobs.GetNumBlobs(),0));
 	    CvRect square = GetSquareRegion(cvPoint(currentBlob->minx, currentBlob->miny),
 					    cvPoint(currentBlob->maxx, currentBlob->maxy));
 	    in_rects.push_back(square);
