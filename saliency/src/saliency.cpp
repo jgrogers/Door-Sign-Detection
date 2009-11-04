@@ -11,8 +11,6 @@ ComputeSaliency(IplImage* image, int thresh, int scale) {
   IplImage* bw_im = cvCreateImage(cvSize(saliency_scale,saliency_scale), 
 				  IPL_DEPTH_8U,1);
   cvResize(bw_im1, bw_im);
-  cvNamedWindow("BW",1);
-  cvShowImage("BW", bw_im);
   IplImage* realInput = cvCreateImage( cvGetSize(bw_im), IPL_DEPTH_32F, 1);
   
   IplImage* imaginaryInput = cvCreateImage( cvGetSize(bw_im), IPL_DEPTH_32F, 1);
