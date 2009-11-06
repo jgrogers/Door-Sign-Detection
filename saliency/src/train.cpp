@@ -9,6 +9,7 @@
 #include <cvaux.h>
 
 #include <gethog.h>
+#include <svm.h>
 
 
 namespace po = boost::program_options;
@@ -18,7 +19,8 @@ struct mousedata {
   CvPoint p1;
   CvPoint p2;
   int num_pts;
-} pp ={0,{},{},0};
+  bool neg;
+} pp ={0,{},{},0,false};
 
 
 void on_mouse(int event, int x, int y, int flags, void* param) {
@@ -28,6 +30,7 @@ void on_mouse(int event, int x, int y, int flags, void* param) {
       pp.p1 = cvPoint(x,y);
       pp.p2 = cvPoint(x,y);
       pp.num_pts = 1;
+      pp.neg =false;
       break;
     }
   case CV_EVENT_LBUTTONUP:
@@ -36,9 +39,25 @@ void on_mouse(int event, int x, int y, int flags, void* param) {
       pp.num_pts = 2;
       break;
     }
+  case CV_EVENT_RBUTTONDOWN:
+    {
+      pp.p1 = cvPoint(x,y);
+      pp.p2 = cvPoint(x,y);
+      pp.num_pts = 1;
+      pp.neg = true;
+      break;
+    }
+  case CV_EVENT_RBUTTONUP:
+    {
+      pp.p2 = cvPoint(x,y);
+      pp.num_pts = 2;
+      break;
+    }
+
   case CV_EVENT_MOUSEMOVE:
     {
-      if (flags & CV_EVENT_FLAG_LBUTTON) {
+      if (flags & CV_EVENT_FLAG_LBUTTON ||
+	  flags & CV_EVENT_FLAG_RBUTTON) {
 	pp.p2 = cvPoint(x,y);
       }
       break;
@@ -67,11 +86,14 @@ int main(int argc, char** argv) {
     std::cout <<desc<<"\n";
     return 1;
   }
-  std::vector< std::vector<float> > sign_descriptors;
+  std::vector< std::vector<float> > pos_descriptors;
+  std::vector< std::vector<float> > neg_descriptors;
   cvNamedWindow("output",1);
   cvNamedWindow("Input",1);
   cvNamedWindow("NewSign",1);
   cvSetMouseCallback("Input", on_mouse);
+  cv::SVM* mySVM;
+  bool test_mode = false;
   if (vm.count("img")) {
     unsigned int key = -1;
     IplImage* img_in = cvLoadImage(vm["img"].as<std::string>().c_str());
@@ -86,7 +108,8 @@ int main(int argc, char** argv) {
       IplImage* img = cvCloneImage(img_in);
 
       if (pp.num_pts != 0) {
-	cvRectangle(img, pp.p1, pp.p2, CV_RGB(0,255,0), 1);
+	if (pp.neg) cvRectangle(img, pp.p1, pp.p2, CV_RGB(255,0,0), 1);
+	else cvRectangle(img, pp.p1, pp.p2, CV_RGB(0,255,0), 1);
       }
       if (pp.num_pts == 2) {
 	printf("Got two points!\n");
@@ -95,6 +118,11 @@ int main(int argc, char** argv) {
 			     MIN(pp.p1.y, pp.p2.y));
 	CvSize signsize = cvSize(abs(pp.p2.x-pp.p1.x),
 				 abs(pp.p2.y-pp.p1.y));
+	if (!signsize.width  || 
+	    !signsize.height) {
+	  printf("too small!\n");
+	  continue;
+	}
 	IplImage* newsign = cvCreateImage(signsize,
 					  IPL_DEPTH_8U,
 					  1);
@@ -103,16 +131,33 @@ int main(int argc, char** argv) {
 	cvShowImage("NewSign", newsign);
 	
 	std::vector<float> desc = GetHog(newsign, 4);
-	sign_descriptors.push_back(desc);
+	if (test_mode) {
+	  float pred = TestSVM_HOG(desc,mySVM);
+	  printf("Pred:%f\n",pred);
+	}
+	else {
+	  if (pp.neg ) neg_descriptors.push_back(desc);
+	  else pos_descriptors.push_back(desc);
+	}
 	cvReleaseImage(&newsign);
       }
       cvShowImage("Input", img);
       key = cvWaitKey(30);
       cvReleaseImage(&img);
-    }while (key != 'q');
+      if ((char)key == 'd') {
+	
+	if (pos_descriptors.size() && neg_descriptors.size()) {
+	  mySVM = TrainSVM_HOG(pos_descriptors,neg_descriptors);
+	  mySVM->save("testsvm.out", "mysvm");
+	  test_mode = true;
+	  printf("Moved into test mode\n");
+	}
+	else printf("Need at least one positive and negative examples\n");
+	key = 'a';
+      }
+    }while ((char)key != 'q');
     cvReleaseImage(&img_in);
     cvReleaseImage(&img_bw);
   }
-  
   return -1;
 }
