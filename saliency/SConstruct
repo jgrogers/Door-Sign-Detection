@@ -6,6 +6,7 @@ env["ENV"]["PKG_CONFIG_PATH"] = os.environ.get("PKG_CONFIG_PATH")
 
 lib_files = Split("""
 		  src/saliency.cpp
+		  src/gethog.cpp
 """)
 
 bloblib_files = Split("""
@@ -30,8 +31,9 @@ env.Append(LIBS = ['cppunit','boost_program_options-mt'])
 
 env.Library('saliency', lib_files)
 env.Library('blobs', bloblib_files)
-
-cpp_files = Split("""src/main.cpp
+run_files = Split("""src/main.cpp
+		      """)
+train_files = Split("""src/train.cpp
 		      """)
 
 test_files = Split("""test/test.cpp
@@ -41,7 +43,7 @@ test_files = Split("""test/test.cpp
 #env = Environment();
 env.Append(LIBS = ['saliency','blobs'])
 env.Append(LIBPATH = ['.'])
-env.Program('bin/saliency', cpp_files)
-
+env.Program('bin/saliency', run_files)
+env.Program('bin/train', train_files)
 env.Program('bin/unittest', test_files);
 

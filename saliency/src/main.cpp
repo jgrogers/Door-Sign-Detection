@@ -6,6 +6,9 @@
 #include <highgui.h>
 #include <cv.h>
 
+#include <cvaux.h>
+
+
  int thresh = 350;
  int scale = 6;
 
@@ -115,6 +118,7 @@ int main(int argc, char** argv) {
     ("saliency_blobs", "run saliency test")
     ("edge", "run edge test")
     ("conv_rect", "run the convolution rectangle test")
+    ("hog", "HOG feature test")
     ;
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc),vm);
@@ -162,6 +166,18 @@ int main(int argc, char** argv) {
 	cvReleaseImage(&img_tmp);
 	cvReleaseImage(&img_out);
       }
+      if (vm.count ("hog")){
+	IplImage* tmp_img = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U, 1);
+	cvCvtColor(img_in, tmp_img, CV_BGR2GRAY);
+	//cv::HOGDescriptor hog(cvSize(3648,2736),cvSize(16,16),cvSize(8,8),cvSize(8,8),9,1,-1);
+	cv::HOGDescriptor hog(cvSize(128,128),cvSize(16,16),cvSize(8,8),cvSize(8,8),9,1,-1);
+	printf("computing...\n");
+	std::vector<float> desc;
+	hog.compute(tmp_img,desc);
+	printf("computed...\n");
+	printf("desc len: %d\n",desc.size());
+	
+      }
       if (vm.count("saliency")) {
 	IplImage* tmp_img = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U, 1);
 	cvCvtColor(img_in, tmp_img, CV_BGR2GRAY);
@@ -176,7 +192,6 @@ int main(int argc, char** argv) {
 	IplImage* tmp_img = cvCreateImage(cvGetSize(img_in), IPL_DEPTH_8U, 1);
 	cvCvtColor(img_in, tmp_img, CV_BGR2GRAY);
 	IplImage* img_out = ComputeSaliency(tmp_img, thresh, scale);
-	cvReleaseImage(&tmp_img);
 	IplImage* displayedImage = cvCreateImage(cvGetSize(img_out), IPL_DEPTH_8U, 3);
 
 	CBlobResult blobs;
@@ -186,7 +201,7 @@ int main(int argc, char** argv) {
 	blobs = CBlobResult( img_out, NULL, 127, 255 );
 	// exclude the ones smaller than param2 value
 	blobs.Filter( blobs, B_EXCLUDE, CBlobGetArea(), B_LESS, 20 );
-	
+
 	// get mean gray color of biggest blob
 	
 	// display filtered blobs
@@ -197,13 +212,52 @@ int main(int argc, char** argv) {
 	for (i = 2; i < blobs.GetNumBlobs(); i++ )
 	  {
 	    currentBlob = blobs.GetBlob(i);
+	    if ((currentBlob->minx == 0.0) &&
+		(currentBlob->miny == 0.0) &&
+		(currentBlob->maxx == 0.0) &&
+		(currentBlob->maxy == 0.0)){
+	    printf("blob bbox: %f %f %f %f\n",currentBlob->minx, currentBlob->miny,currentBlob->maxx,currentBlob->maxy);
+	    } else {
+	    printf("blob bbox: %f %f %f %f\n",currentBlob->minx, currentBlob->miny,currentBlob->maxx,currentBlob->maxy);
+
 	    //currentBlob->FillBlob( displayedImage, CV_RGB(255-i*255/blobs.GetNumBlobs(),i*255/blobs.GetNumBlobs(),0));
-	    CvRect square = GetSquareRegion(cvPoint(currentBlob->minx, currentBlob->miny),
-					    cvPoint(currentBlob->maxx, currentBlob->maxy));
+	    //CvRect square = GetSquareRegion(cvPoint(currentBlob->minx, currentBlob->miny),
+	    //cvPoint(currentBlob->maxx, currentBlob->maxy));
+	    CvRect square = cvRect(currentBlob->minx, currentBlob->miny,currentBlob->maxx - currentBlob->minx, currentBlob->maxy - currentBlob->miny);
 	    in_rects.push_back(square);
 	    cvRectangle(displayedImage, cvPoint(square.x, square.y),
 			cvPoint(square.x + square.width, square.y + square.height),
 			CV_RGB(0,0,255),3);
+	    
+	    cvSetImageROI(tmp_img, square);
+	    square.width = 16;
+	    square.height = 16;
+
+	    //CvMat* newmat = cvCreateMat(square.width, square.height,CV_8UC1);
+	    CvMat* newmat = cvCreateMat(square.height, square.width,CV_8UC1);
+	    cv::HOGDescriptor hog(cvSize(square.width,square.height),
+				  cvSize(16,16),
+				  cvSize(4,4),
+				  cvSize(4,4),
+				  8,1,-1); 
+	
+	    
+	    cvResize(tmp_img, newmat);
+	    cv::Mat tmpmat(newmat, true);
+	    //cv::Mat grad, qangle;
+	    cv::Size paddingTL = cvSize(1,1);
+	    cv::Size paddingBR = cvSize(1,1);
+	    std::vector<float> descriptor;
+	    //hog.computeGradient(tmpmat, grad, qangle, paddingTL, paddingBR);
+	    hog.compute(tmpmat,descriptor);
+	    printf("descriptor len: %d\n",descriptor.size());
+	    for(int k = 0; k < descriptor.size(); k++){
+	      printf("%f,",descriptor[k]);
+	    }
+	    printf("\n");
+	    hog.save("testhog.hog","blah");
+			cvResetImageROI(tmp_img);
+	    }
 	  }
 	std::vector<CvRect>out_rects = GetOverlappedSquareRegions(in_rects);
 	for (std::vector<CvRect>::iterator itr = out_rects.begin();
@@ -220,6 +274,8 @@ int main(int argc, char** argv) {
 	cvShowImageSmall("output",displayedImage);
 	cvReleaseImage(&img_out);
 	cvReleaseImage(&displayedImage);
+	cvReleaseImage(&tmp_img);
+
       }
 
       key = cvWaitKey(30);
