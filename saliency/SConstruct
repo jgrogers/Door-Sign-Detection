@@ -8,6 +8,7 @@ lib_files = Split("""
 		  src/saliency.cpp
 		  src/gethog.cpp
 		  src/svm.cpp
+		  src/image.cpp
 """)
 
 bloblib_files = Split("""
@@ -28,7 +29,7 @@ else:
 
 env.Append(CPPPATH = ['include','../blobs'])
 
-env.Append(LIBS = ['cppunit','boost_program_options-mt'])
+env.Append(LIBS = ['cppunit','boost_program_options-mt','boost_filesystem-mt'])
 
 env.Library('saliency', lib_files)
 env.Library('blobs', bloblib_files)
@@ -37,6 +38,8 @@ run_files = Split("""src/main.cpp
 train_files = Split("""src/train.cpp
 		      """)
 
+label_files = Split("""src/label.cpp
+			""")
 test_files = Split("""test/test.cpp
 		      """)
  
@@ -46,5 +49,6 @@ env.Append(LIBS = ['saliency','blobs'])
 env.Append(LIBPATH = ['.'])
 env.Program('bin/saliency', run_files)
 env.Program('bin/train', train_files)
+env.Program('bin/label', label_files)
 env.Program('bin/unittest', test_files);
 
